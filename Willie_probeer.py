@@ -5,6 +5,16 @@
 #    Willie Broekman               21441562
 #    David Nel                     21435058
 #######################################################################################################################
+""" GLOBAL VARIABLES """
+bfs_dfs = 0
+depth = 5
+moves = ["R", "P", "S"]
+beat_dict = {
+    "R": "P",
+    "P": "S",
+    "S": "R"
+}
+
 
 ################################### TASK 1 ###########################################################
 class Nodes:
@@ -23,25 +33,30 @@ class Nodes:
         self.middle = None
         self.parent = None
         self.visited = False
+        self.depth = 0
+        self.max_depth = depth
 
     # Used to generate branches for a node
     # Setting depth equal to 1, will cause the program to generate only one row of elements
     # Setting depth more than 1 , will cause the program to generate an entire tree with the defined depth
-    def generate_branch(self, depth=1):
+    def generate_branch(self, depth_to_traverse=1):
         """Create branches for a node"""
-        if depth != 0:
+        if depth_to_traverse != 0 and self.depth < self.max_depth:
             # Create all children of the current node
             self.left = Nodes("R")
+            self.left.depth = self.depth + 1
             self.left.parent = self
             self.middle = Nodes("P")
+            self.middle.depth = self.depth + 1
             self.middle.parent = self
             self.right = Nodes("S")
+            self.right.depth = self.depth + 1
             self.right.parent = self
 
             # Recursively do the same for the entire level, if the depth is more than 1
-            self.left.generate_branch(depth - 1)
-            self.middle.generate_branch(depth - 1)
-            self.right.generate_branch(depth - 1)
+            self.left.generate_branch(depth_to_traverse - 1)
+            self.middle.generate_branch(depth_to_traverse - 1)
+            self.right.generate_branch(depth_to_traverse - 1)
         return self
 
 
@@ -49,11 +64,11 @@ class Nodes:
 def depth_first_traversal(node):
     """Depth first search algorithm"""
     # check if valid node is inputted
-    if (node == None):
+    if node == None:
         return []
     # Since this is a recursive function, the outputs will be returned and saved to an array
     arr = []
-    if (node.name != "start"):
+    if node.name != "start":
         arr.append(node)
 
     # Since this is a recursive function, the outputs will be returned and saved to an array
@@ -70,6 +85,7 @@ def depth_first_traversal(node):
         arr.append(elements)
 
     return arr
+
 
 def breadth_first_search(node):
     """ Breadth first search algorithm"""
@@ -97,23 +113,22 @@ def breadth_first_search(node):
     return arr
 
 
-
-
-
-
-
 ################################### TASK 3 ###########################################################
-""" GLOBAL VARIABLES """
-bfs_dfs = 1
-depth = 5
-root = Nodes("start")
-root.generate_branch()
-beat_dict = {"R": "P", "P": "S", "S": "R"}
-my_hist = ""
-opp_hist = ""
-length = 0
-sequence = []
-repeat_sequence = False
+
+
+def get_next_move():
+    tree = []
+    global root
+    if bfs_dfs == 0:
+        tree = breadth_first_search(root)
+    if bfs_dfs == 1:
+        tree = depth_first_traversal(root)
+    for elements in tree:
+        if not elements.visited:
+            elements.visited = True
+            elements.generate_branch()
+            return elements
+    return None
 
 
 def print_name(node):
@@ -124,167 +139,106 @@ def print_name(node):
     return name + node.name
 
 
-
 if input == "":
-    # here we will set/reset the original values
+    # print("if")
+    # global root
     root = Nodes("start")
     root.generate_branch()
-    my_hist = ""
+
+    # The game state will be used to determine if we should repeat or find new break sequence or play the current
+    # break sequence
+    # 0 -> get_next_move
+    # 1 -> play_break_sequence
+    # 2 -> repeat winning move
+    game_state = 0
+
+    pos = 0
     opp_hist = ""
-    length = 0
-    sequence = []
+    my_hist = ""
+    break_sequence = ""
 
-    output = "R"
+    cur_node = get_next_move()
+    break_sequence = print_name(cur_node)
+    game_state = 1
+    # print("RESET =================================")
+    # print( break_sequence)
+    # print("=================================")
+    pos = pos + 1
+    my_hist = my_hist + break_sequence[pos - 1]
+    my_output = break_sequence[pos - 1]
 else:
-    prev_opp = str(input)
-    sequence_arr = []
+    save = input
 
-    # check opponent history for repeat
-    opp_hist = opp_hist + prev_opp
-    if (opp_hist[-2] != input):
-        repeat_sequence = False
+    if len(opp_hist) > 5:
+        opp_hist = opp_hist[1::]
+    if len(my_hist) > 5:
+        my_hist = my_hist[1::]
 
-    if (opp_hist[-2] == input and repeat_sequence != True):
-        # go to a repeat state
-        repeat_sequence = True
-        # copy the length of the history out of personal history + value to beat the sequence
-        sequence = my_hist[-length: len(my_hist) + 1] + beat_dict.get(prev_opp)
-        sequence_arr = sequence.split()
-        # repeat history
+    opp_hist = opp_hist + save
 
-    # check if in repeat state
-    if (repeat_sequence):
-        # Pop each element out of array, plus move to beat sequence
-        if (len(sequence_arr) > 1 ):
-            output = sequence_arr.pop(0)
+    # print("Opp output " + save)
+    # print("My output " + my_output)
+    #
+    # print("Opp hist " + opp_hist)
+    # print("My hist " + my_hist)
+    #
+    #
+    # print("")
+    # print("ELse")
+
+    if game_state == 0:
+        # print("Else State 1")
+        my_hist = ""
+        opp_hist = ""
+        cur_node = get_next_move()
+        break_sequence = print_name(cur_node)
+        game_state = 1
+        # print(break_sequence)
+        # print("=================================")
+        # print(root)
+
+    if game_state == 1:
+        # print("Else State 2")
+        if pos >= len(break_sequence) + 1:
+            # print("Else State 2 If")
+            if (opp_hist[-2] == opp_hist[-1]):
+                game_state = 2
+            else:
+                my_hist = ""
+                opp_hist = ""
+                pos = 1
+                cur_node = get_next_move()
+                break_sequence = print_name(cur_node)
+
+                my_output = break_sequence[pos - 1]
+                my_hist = my_hist + my_output
+                # print(break_sequence)
+                # print("=================================")
+                # arr = depth_first_traversal(root)
+                # tree_str = ""
+                # for element in arr:
+                #     tree_str = tree_str + print_name(element) + " "
+                # print(tree_str)
+
+
+        elif (pos == len(break_sequence)):
+            # print("Else State 2 Elif")
+            pos = pos + 1
+            my_output = beat_dict.get(opp_hist[-1])
+            my_hist = my_hist + my_output
+            # print(my_output)
         else:
-            output = sequence_arr[0]
+            # print("Else State 2 Else")
+            pos = pos + 1
+            # print(break_sequence)
+            my_hist = my_hist + break_sequence[pos - 1]
+            my_output = break_sequence[pos - 1]
+    if game_state == 2:
+        if (opp_hist[-2] == opp_hist[-1]):
+            my_output = beat_dict.get(opp_hist[-1])
+        else:
+            game_state = 1
+            pos = 0
+            my_output = break_sequence[pos]
 
-    # else do search
-    else:
-        if bfs_dfs == 1:
-            node = None
-            root = depth_first_traversal(root)
-            for elements in root:
-                if elements.visited == False:
-                    node = elements
-                    break
-            node.visited = True
-            name = print_name(node)
-            length = len(name)
-
-            # after finding the node that is next, we first check if it has children, if not we generate some
-            if node.left == None:
-                node.generate_branch()
-
-            # Now we have to set the output to the node's value and determine if we found the break sequence
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def printTree(arr):
-    str1 = ""
-    for elements in arr:
-        str1 = str1 + " " + elements.name
-    print(str1)
-
-
-# def searchDFS():
-#     """ This search will be used to traverse the tree and search for the break sequence"""
-#
-#     """
-#                      start
-#                    /   |   \
-#                  R     P    S
-#       On generate 1  : currently working on node start
-#                      start
-#                    /   |   \
-#                  R     P    S
-#               /  | \
-#              R   P  S
-#       On generate 2  : currently working on node R
-#                      start
-#                    /   |   \
-#                  R     P    S
-#               /  | \
-#              R   P  S
-#            / | \
-#           R  P  S
-#       On generate 3  : currently working on node RR
-#
-#     """
-#
-#     # Start with a node
-#     root = [Nodes("start")]
-#     printTree(root)
-#
-#     # Get the root node's children and save it to an array
-#
-#     # for the depth, we have to create nodes and their children, but we have already used 1 layer, so depth - 1
-#     for i in range(depth - 1):
-#         traverse_arr = arr;
-#         arr = []
-#         for element in traverse_arr:
-#             element = depth_first_traversal(element)
-#             arr.append(element.left)
-#             arr.append(element.middle)
-#             arr.append(element.right)
-#         printTree(arr)
-
-
-
-#
-#
-# def search(num, node):
-#     if (num == 0):
-#         breadth_first_search(node)
-#     else:
-#         depth_first_traversal(node)
-#     return
-#
-#
-# # my_node = Nodes("start")
-# # my_node.generate_branch(5)\
-# # #print(search(1, my_node))
-#
-#
-# searchDFS()
-#
-# """
-# def searchBFS():
-#
-#
-#
-# def task3():
-#
-#     if bfs_dfs == 0:
-#         searchBFS()
-#     else:
-#         searchDFS()
-# """
+output = my_output
